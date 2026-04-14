@@ -94,68 +94,56 @@
         }
     }
 
-    function searchPlant() {
-        const input = document.getElementById('search-input').value.trim();
-        const display = document.getElementById('result-display');
-        const priceList = document.getElementById('price-list');
+function searchPlant() {
+    const input = document.getElementById('search-input').value.trim();
+    const display = document.getElementById('result-display');
+    const priceList = document.getElementById('price-list');
+    
+    if (input === "") {
+        display.style.display = "none";
+        return;
+    }
+
+    // スペース（全角・半角両方）で入力を分割して配列にする
+    const keywords = input.split(/[\s　]+/);
+
+    // キーワードのいずれかに一致するデータをすべて抽出
+    const matches = plantData.filter(p => {
+        return keywords.some(key => p.name && p.name.includes(key));
+    });
+
+    if (matches.length > 0) {
+        display.style.display = "block";
         
-        if (input === "") {
-            display.style.display = "none";
-            return;
-        }
+        // 品種ごとにグループ化して表示
+        // ン と入力しても、パンジーの塊、シクラメンの塊に分かれて表示されます
+        const grouped = {};
+        matches.forEach(p => {
+            if (!grouped[p.name]) grouped[p.name] = [];
+            grouped[p.name].push(p);
+        });
 
-        const matches = plantData.filter(p => p.name && p.name.includes(input));
-
-        if (matches.length > 0) {
-            display.style.display = "block";
-            document.getElementById('target-name').innerText = matches[0].name;
-            priceList.innerHTML = matches.map(p => `
+        let html = "";
+        for (let name in grouped) {
+            html += `<div style="margin-bottom: 20px; border-bottom: 2px solid #e8f5e9;">`;
+            html += `<div class="plant-name">${name}</div>`; // 品種名を見出しに
+            html += grouped[name].map(p => `
                 <div class="price-row">
                     <span class="size-label">${p.size}</span>
                     <span class="price-value">${p.price}円</span>
                 </div>
             `).join('');
-        } else {
-            display.style.display = "none";
+            html += `</div>`;
         }
-    }
-
-    function searchPlant() {
-        const input = document.getElementById('search-input').value.trim();
-        const display = document.getElementById('result-display');
-        const noResult = document.getElementById('no-result-msg');
-        const priceList = document.getElementById('price-list');
         
-        if (input === "") {
-            display.style.display = "none";
-            noResult.style.display = "block";
-            return;
-        }
+        // 元の target-name は不要になるので空にするか、ここ自体を書き換え
+        document.getElementById('target-name').innerText = ""; 
+        priceList.innerHTML = html;
 
-        // 入力した文字を含むものをすべて抽出
-        const matches = plantData.filter(p => p.name && p.name.includes(input));
-
-        if (matches.length > 0) {
-            display.style.display = "block";
-            noResult.style.display = "none";
-            
-            // 最初に見つかった名前をタイトルに
-            document.getElementById('target-name').innerText = matches[0].name;
-            
-            // サイズ違いも含めてすべてリスト表示
-            priceList.innerHTML = matches.map(p => `
-                <div class="price-row">
-                    <span class="size-label">${p.size}</span>
-                    <span class="price-value">${p.price}円</span>
-                </div>
-            `).join('');
-        } else {
-            display.style.display = "none";
-            noResult.style.display = "block";
-            noResult.innerText = "一致する品種がありません";
-        }
+    } else {
+        display.style.display = "none";
     }
-
+}
     // 起動時に実行
     loadData();
 </script>
