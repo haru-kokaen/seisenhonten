@@ -1,11 +1,123 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-	<meta charset="UTF-8">
-	<title>国華園和泉本店 生鮮クーポン</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>国華園 価格検索システム</title>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, sans-serif; padding: 20px; background: #f0f4f0; color: #333; margin: 0; }
+        .container { max-width: 500px; margin: 20px auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        h1 { font-size: 1.2rem; color: #2e7d32; text-align: center; margin-bottom: 20px; }
+        
+        /* 検索ボックス */
+        #search-input {
+            width: 100%; padding: 15px; font-size: 18px; border: 2px solid #a5d6a7; border-radius: 10px;
+            box-sizing: border-box; outline: none; transition: border-color 0.3s;
+        }
+        #search-input:focus { border-color: #4CAF50; }
+
+        /* 結果表示エリア */
+        #result-display { margin-top: 25px; display: none; border-top: 3px solid #4CAF50; padding-top: 15px; }
+        .plant-name { font-size: 1.5rem; font-weight: bold; color: #1b5e20; margin-bottom: 15px; }
+        
+        /* 価格リストの行 */
+        .price-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid #eee;
+        }
+        .price-row:last-child { border-bottom: none; }
+        .size-label { font-size: 1.1rem; color: #555; background: #e8f5e9; padding: 2px 8px; border-radius: 4px; }
+        .price-value { font-size: 1.6rem; color: #d81b60; font-weight: bold; }
+
+        .no-result { color: #999; text-align: center; margin-top: 20px; font-size: 0.9rem; }
+        .loading { font-size: 0.8rem; color: #4CAF50; text-align: center; margin-bottom: 10px; }
+    </style>
 </head>
 <body>
-	<h1>生鮮クーポン</h1>
-	<p>国華園和泉本店生鮮館</p>
+
+<div class="container">
+    <h1>国華園 苗価格チェッカー</h1>
+    <div id="status" class="loading">データ読み込み中...</div>
+    
+    <input type="text" id="search-input" placeholder="品種名を入力 (例: パンジー)" oninput="searchPlant()">
+
+    <div id="result-display">
+        <div id="target-name" class="plant-name"></div>
+        <div id="price-list"></div>
+    </div>
+    <div id="no-result-msg" class="no-result">検索結果はここに表示されます</div>
+</div>
+
+<script>
+    // 【重要】ここにスプレッドシートをウェブに公開(CSV)したURLを貼り付けてください
+    const csvUrl = https://docs.google.com/spreadsheets/d/e/2PACX-1vQhMzl365bxMFjCE-635-alvXeKAsdw-lcMnHQWL5Puw3GY2rVvgPAFmyrxyCW8tLvqojlhk9EZ5KYg/pub?gid=0&single=true&output=csv;
+    
+    let plantData = [];
+
+    // スプレッドシートからデータを取得
+    async function loadData() {
+        try {
+            const response = await fetch(csvUrl);
+            const text = await response.text();
+            
+            // CSVを解析してオブジェクトの配列にする
+            const rows = text.split('\n').filter(row => row.trim() !== ''); 
+            // 最初の行(ヘッダー)を除外して処理
+            plantData = rows.slice(1).map(row => {
+                const columns = row.split(',');
+                return {
+                    name: columns[0] ? columns[0].trim() : "",
+                    size: columns[1] ? columns[1].trim() : "",
+                    price: columns[2] ? columns[2].trim() : ""
+                };
+            });
+            document.getElementById('status').innerText = "データ更新完了";
+            setTimeout(() => { document.getElementById('status').style.display = 'none'; }, 2000);
+        } catch (error) {
+            document.getElementById('status').innerText = "データの読み込みに失敗しました";
+            console.error("Fetch Error:", error);
+        }
+    }
+
+    function searchPlant() {
+        const input = document.getElementById('search-input').value.trim();
+        const display = document.getElementById('result-display');
+        const noResult = document.getElementById('no-result-msg');
+        const priceList = document.getElementById('price-list');
+        
+        if (input === "") {
+            display.style.display = "none";
+            noResult.style.display = "block";
+            return;
+        }
+
+        // 入力した文字を含むものをすべて抽出
+        const matches = plantData.filter(p => p.name && p.name.includes(input));
+
+        if (matches.length > 0) {
+            display.style.display = "block";
+            noResult.style.display = "none";
+            
+            // 最初に見つかった名前をタイトルに
+            document.getElementById('target-name').innerText = matches[0].name;
+            
+            // サイズ違いも含めてすべてリスト表示
+            priceList.innerHTML = matches.map(p => `
+                <div class="price-row">
+                    <span class="size-label">${p.size}</span>
+                    <span class="price-value">${p.price}</span>
+                </div>
+            `).join('');
+        } else {
+            display.style.display = "none";
+            noResult.style.display = "block";
+            noResult.innerText = "一致する品種がありません";
+        }
+    }
+
+    // 起動時に実行
+    loadData();
+</script>
+
 </body>
 </html>
