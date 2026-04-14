@@ -48,34 +48,75 @@
     <div id="no-result-msg" class="no-result">検索結果はここに表示されます</div>
 </div>
 
+
+
 <script>
-    // 【重要】ここにスプレッドシートをウェブに公開(CSV)したURLを貼り付けてください
+    // ここにスプレッドシートの「ウェブに公開(CSV)」のURLを直接貼ってください
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQhMzl365bxMFjCE-635-alvXeKAsdw-lcMnHQWL5Puw3GY2rVvgPAFmyrxyCW8tLvqojlhk9EZ5KYg/pub?gid=0&single=true&output=csv";
-    
+
     let plantData = [];
 
-    // スプレッドシートからデータを取得
     async function loadData() {
+        const statusEl = document.getElementById('status');
         try {
-            const response = await fetch(csvUrl);
+            // mode: 'cors' を明示的に指定
+            const response = await fetch(csvUrl, { mode: 'cors' });
+            
+            if (!response.ok) {
+                throw new Error(`HTTPエラー! ステータス: ${response.status}`);
+            }
+
             const text = await response.text();
             
-            // CSVを解析してオブジェクトの配列にする
-            const rows = text.split('\n').filter(row => row.trim() !== ''); 
-            // 最初の行(ヘッダー)を除外して処理
+            // データが正しく取得できているかチェック
+            if (!text || text.length < 10) {
+                throw new Error("データが空か、正しく取得できていません。");
+            }
+
+            const rows = text.split(/\r?\n/).filter(row => row.trim() !== ''); 
             plantData = rows.slice(1).map(row => {
                 const columns = row.split(',');
                 return {
-                    name: columns[0] ? columns[0].trim() : "",
-                    size: columns[1] ? columns[1].trim() : "",
-                    price: columns[2] ? columns[2].trim() : ""
+                    name: columns[0] ? columns[0].trim() : "名前なし",
+                    size: columns[1] ? columns[1].trim() : "-",
+                    price: columns[2] ? columns[2].trim() : "価格なし"
                 };
             });
-            document.getElementById('status').innerText = "データ更新完了";
-            setTimeout(() => { document.getElementById('status').style.display = 'none'; }, 2000);
-        } catch (error) {
-            document.getElementById('status').innerText = "データの読み込みに失敗しました";
-            console.error("Fetch Error:", error);
+
+            statusEl.innerText = "連携成功！";
+            statusEl.style.color = "#2e7d32";
+            setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+
+        } catch (e) {
+            console.error("エラー:", e);
+            statusEl.innerText = "読み込みエラー詳細: " + e.message;
+            statusEl.style.color = "red";
+        }
+    }
+
+    function searchPlant() {
+        const input = document.getElementById('search-input').value.trim();
+        const display = document.getElementById('result-display');
+        const priceList = document.getElementById('price-list');
+        
+        if (input === "") {
+            display.style.display = "none";
+            return;
+        }
+
+        const matches = plantData.filter(p => p.name && p.name.includes(input));
+
+        if (matches.length > 0) {
+            display.style.display = "block";
+            document.getElementById('target-name').innerText = matches[0].name;
+            priceList.innerHTML = matches.map(p => `
+                <div class="price-row">
+                    <span class="size-label">${p.size}</span>
+                    <span class="price-value">${p.price}</span>
+                </div>
+            `).join('');
+        } else {
+            display.style.display = "none";
         }
     }
 
